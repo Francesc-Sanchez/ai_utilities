@@ -1,56 +1,84 @@
-markdown
-# 🧠 Multi-Source Research Agent with LangGraph
+# 🧠 Agente de Investigación Multi-Fuente con LangGraph
 
-## Overview
+## Resumen
 
-This project implements a robust, multi-source research agent using [LangGraph](https://github.com/langchain-ai/langgraph), a graph-based orchestration framework for language agents. It refines user queries using a large language model (LLM), executes parallel searches across multiple online sources, filters irrelevant results, and synthesizes a final report.
-
----
-
-## 🔍 Features
-
-- **Query Refinement**: Uses DeepSeek to translate and optimize user queries for search APIs.
-- **Multi-Source Search**: Integrates tools for:
-  - Google
-  - DuckDuckGo
-  - Wikipedia
-  - News
-  - Arxiv
-  - PubMed
-  - YouTube
-  - Bing
-  - Stack Overflow
-  - GitHub
-- **Error Handling & Retry**: Automatically retries failed sources up to `MAX_RETRIES`.
-- **LLM-Based Pruning**: Filters noisy or irrelevant results using a custom prompt and DeepSeek.
-- **Synthesis**: Generates a structured summary of findings across all sources.
+Este proyecto implementa un agente de investigación multi-fuente basado en [LangGraph](https://github.com/langchain-ai/langgraph), un framework de orquestación en forma de grafo para agentes de lenguaje. El agente afina consultas con un LLM, ejecuta búsquedas paralelas en múltiples fuentes, filtra resultados irrelevantes y sintetiza un informe final.
 
 ---
 
-## 📦 Installation
+## 🔍 Características
 
-```bash
-git clone https://github.com/your-username/research-agent
+- Afinamiento de consultas (DeepSeek) para adaptar y optimizar búsquedas.
+- Búsquedas multi-fuente (Google, DuckDuckGo, Wikipedia, News, ArXiv, PubMed, YouTube, Bing, Stack Overflow, GitHub, etc.).
+- Reintentos automáticos y manejo de errores configurables (MAX_RETRIES).
+- Filtrado y poda basada en LLM para reducir ruido.
+- Síntesis final con un resumen estructurado de los hallazgos.
+
+---
+
+## 📦 Instalación
+
+Requisitos: Python 3.8+ y pip, o usar Poetry si prefieres.
+
+1. Clona el repositorio:
+
+```powershell
+git clone https://github.com/your-username/research-agent.git
 cd research-agent
+```
+
+2. (Opcional) Crear y activar un entorno virtual (Windows PowerShell):
+
+```powershell
 python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+.\.venv\Scripts\Activate.ps1
+# Si usas cmd.exe: .\.venv\Scripts\activate.bat
+```
+
+3. Instalar dependencias:
+
+```powershell
 pip install -r requirements.txt
-Make sure to include your .env file with the following:
+# o con poetry:
+# poetry install
+```
 
-env
-OPENAI_API_KEY=your_openai_key
-EMAIL=your_email_for_entrez
-🚀 Usage
-Run the agent with a custom query:
+4. Añadir variables de entorno (ejemplo `.env`):
 
-bash
+```
+OPENAI_API_KEY=tu_openai_key
+EMAIL=tu_email_para_entrez
+```
+
+Asegúrate de no subir credenciales a repositorios públicos.
+
+---
+
+## 🚀 Uso
+
+Ejecuta el agente principal (o ajusta el fichero `src/main.py` según tu flujo):
+
+```powershell
 python src/main.py
-Or modify the question variable in main.py:
+```
 
-python
-question = "what are R1b haplogroups?"
-🧩 Architecture
-mermaid
+También puedes modificar la variable `question` en `main.py` para probar distintas consultas.
+
+---
+
+## 🧩 Arquitectura (resumen)
+
+El flujo general del agente es:
+
+- Refinar la consulta con el LLM
+- Ejecutar búsquedas en paralelo en múltiples fuentes
+- Reintentar fallos hasta `MAX_RETRIES`
+- Podar resultados irrelevantes con prompts de LLM
+- Sintetizar un informe final
+
+Diagrama (mermaid):
+
+```mermaid
 graph TD
     START --> refine_query
     refine_query --> google
@@ -76,11 +104,19 @@ graph TD
     verify_retry --> prune_results
     prune_results --> synthesis
     synthesis --> END
-🛠️ Tool Registry & Catalog
-All tools are loaded via setup_all_tools() and stored in agent_tools. The catalog is built dynamically and includes consistency checks.
+```
 
-🔧 Catalog Construction
-python
+> Nota: Para visualizar el diagrama mermaid necesitas un renderizador compatible (GitHub lo soporta en la web, algunos editores requieren plugins).
+
+---
+
+## 🛠️ Registro de herramientas y catálogo
+
+Las herramientas se cargan mediante `setup_all_tools()` y se almacenan en `agent_tools`.
+
+Ejemplo de construcción de catálogo:
+
+```python
 from src.tools.setup_tools import setup_all_tools
 setup_all_tools()
 
@@ -90,72 +126,55 @@ tool_catalog = {
     agent_name.replace("_agent", ""): tools
     for agent_name, tools in agent_tools.items()
 }
-🧮 Summary Report
-Total tools registered: sum(len(tools) for tools in agent_tools.values())
 
-Agents registered: len(agent_tools)
+# Número total de herramientas registradas:
+# total = sum(len(tools) for tools in agent_tools.values())
+```
 
-Tools per agent: Listed with name and description
+Se verifica la consistencia entre agentes registrados y el catálogo.
 
-📋 Example Output
-Codi
-🧮 Total registered tools: 17
+---
 
-📋 REGISTERED AGENTS REPORT
-========================================
-🔢 Total registered agents: 5
+## 🧮 Ejemplo de salida (síntesis)
 
-🧠 search_agent: 11 tool(s)
-   └─ 🛠️ search_google_detailed — Google search with structured output
-   └─ 🛠️ DDGGeneralSearch — DuckDuckGo general search
-   └─ 🛠️ WikipediaStructuredSearch — Wikipedia API wrapper
-   └─ 🛠️ ArxivRawQuery — Arxiv scientific paper search
-   └─ 🛠️ PubMedSearchTool — PubMed biomedical search
-   └─ 🛠️ YouTubeSerpAPISearch — YouTube video search
-   └─ 🛠️ BingSearchTool — Bing search engine wrapper
-   └─ 🛠️ StackOverflowSearchTool — Stack Overflow Q&A search
-   └─ 🛠️ GithubDomainSearch — GitHub repository search
-   └─ 🛠️ DDGNewsSearch — DuckDuckGo news search
-   └─ 🛠️ BraveSearchTool — Brave search engine wrapper
-🚨 Consistency Check
-Verifies that all agents are correctly cataloged:
+**Consulta original:** what are R1b haplogroups?
 
-python
-registered = set(agent_tools.keys())
-catalogued = set(tool_catalog.keys())
-missing = registered - {key + "_agent" for key in catalogued}
-If any are missing, they are printed as:
-
-Codi
-⚠️ AGENTS WITHOUT CATALOG ENTRY
-❌ some_agent
-Otherwise:
-
-Codi
-✅ All agents are correctly cataloged.
-✅ Example Output
-markdown
-## Research Results Synthesis
-
-**Original Query:** what are R1b haplogroups?
-**Optimized Query (Deepseek):** R1b haplogroup genetic ancestry
+**Consulta optimizada (DeepSeek):** R1b haplogroup genetic ancestry
 
 ### Google
-R1b is a major Y-DNA haplogroup found in Western Europe...
+R1b es un haplogrupo mayor del cromosoma Y frecuente en Europa occidental...
 
 ### PubMed
-**Title:** Genetic structure of R1b lineages in Europe
-**Date:** 2021
-**Link:** https://pubmed.ncbi.nlm.nih.gov/12345678/
+**Título:** Genetic structure of R1b lineages in Europe
+**Fecha:** 2021
+**Enlace:** https://pubmed.ncbi.nlm.nih.gov/12345678/
 
-...
+... (salida de ejemplo resumida)
 
-🧠 Full synthesis generated. End of process.
-📄 License
-MIT License. See LICENSE file for details.
+---
 
-🤝 Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you’d like to change.
+## ✅ Comprobaciones internas (consistencia)
 
-🙋‍♂️ Author
-Developed by Francesc Sánchez Parés
+Se realiza una verificación para comprobar que todos los agentes registrados aparecen en el catálogo. Si faltase alguno, se imprime una advertencia para añadirlo manualmente.
+
+---
+
+## 📄 Licencia
+
+MIT License. Ver el fichero `LICENSE` para más detalles.
+
+---
+
+## 🤝 Contribuir
+
+Se aceptan pull requests. Para cambios importantes, abre un issue primero para discutir la propuesta.
+
+---
+
+## 👤 Autor
+
+Desarrollado por Francesc Sánchez Parés
+
+---
+
+*README actualizado: limpieza de formato, corrección de bloques de código y adición de instrucciones claras de instalación/uso (incl. Windows PowerShell).*
