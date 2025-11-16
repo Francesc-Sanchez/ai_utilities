@@ -29,6 +29,8 @@ def fallback_pubmed_search(query: str) -> str:
     except Exception as e:
         return f"❌ Fallback PubMed search failed: {e}"
 
+def safe_text(text: str) -> str:
+    return text.encode ( "utf-8" , errors = "replace" ).decode ( "utf-8" )
 
 def search_pubmed(query: str , max_results: int = 5) -> str:
     """
@@ -60,7 +62,7 @@ def search_pubmed(query: str , max_results: int = 5) -> str:
             pubdate = r.get ( "PubDate" , "No date" )
             pmid = r.get ( "Id" )
             link = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-            summaries.append ( f"**Title:** {title}\n**Date:** {pubdate}\n**Link:** {link}" )
+            summaries.append ( safe_text ( f"**Title:** {title}\n**Date:** {pubdate}\n**Link:** {link}" ) )
 
         return "\n\n".join ( summaries )
 
