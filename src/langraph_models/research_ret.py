@@ -16,15 +16,45 @@ from src.tools.setup_tools import setup_all_tools
 
 from src.core.load_ret_llm_models import get_model
 
-setup_all_tools ( )
-from src.tools.registry.shared_registry import agent_tools
+# Defer heavy initialization (tool setup and LLM client creation) until first use.
+# This prevents import-time failures when optional dependencies or credentials are missing.
+_TOOLS_INITIALIZED = False
+DEEPSEEK_MODEL = None
+agent_tools = None
+
+def ensure_tools_initialized():
+    """Idempotent initialization for tool registry and LLM client.
+    Safe to call multiple times; on failure it logs and leaves shim behavior.
+    """
+    global _TOOLS_INITIALIZED, DEEPSEEK_MODEL, agent_tools
+    if _TOOLS_INITIALIZED:
+        return
+    try:
+        setup_all_tools()
+        # import agent_tools after setup_all_tools populates registry
+        from src.tools.registry.shared_registry import agent_tools as _agent_tools
+        agent_tools = _agent_tools
+        # instantiate the Deepseek model used for query refinement
+        try:
+            DEEPSEEK_MODEL = get_model("Deepseek")
+        except Exception:
+            DEEPSEEK_MODEL = None
+            logging.exception("Could not initialize DEEPSEEK_MODEL; continuing without it")
+        _TOOLS_INITIALIZED = True
+        logging.info("research_ret: tools and models initialized successfully")
+    except Exception:
+        logging.exception("ensure_tools_initialized failed; tools may be unavailable")
+        # Keep _TOOLS_INITIALIZED False so future calls may retry
+        _TOOLS_INITIALIZED = False
+        DEEPSEEK_MODEL = None
+        agent_tools = None
 
 # ----------------------------------------------------------------------
 
 # --- CONFIGURACIÓN Y CONSTANTES ---
 logging.basicConfig ( level = logging.INFO , format = '%(asctime)s - %(levelname)s - %(message)s' )
 MAX_RETRIES = 2  # Intentos máximos por herramienta
-DEEPSEEK_MODEL = get_model ( "Deepseek" )  # Cliente LLM para optimización y filtrado
+# DEEPSEEK_MODEL will be created lazily in ensure_tools_initialized()
 
 # NUEVO: umbral mínimo configurable para contenido de herramienta
 MIN_CONTENT_LENGTH = 100  # antes 200, bajado para reducir reintentos innecesarios
@@ -388,6 +418,8 @@ def get_tool_node(state: AgentState , node_name: str , tool_name: str) -> Dict[ 
     search_query = state.get ( "refined_query" , state[ "query" ] )
     try:
         # 1. Ejecutar la herramienta
+        # Ensure tools/models are initialized before executing tools
+        ensure_tools_initialized()
         logging.info ( f"    [Node: {node_name}] Ejecutando tool '{tool_name}' con query: '{search_query[ :50 ]}...'" )
 
         # Si la consulta original está en español y estamos llamando a Google, intentamos
@@ -804,9 +836,37 @@ logging.info (
 
 
 # --- Ejecución de Prueba ---
+
+
+def get_links_from_question(question):
+    """
+    This function takes a question as input, initializes the research agent with the question,
+    and returns a dictionary containing the links found.
+    """
+    initial_state = {
+        "query": question,
+        "retry_count": 0,
+        "failed_nodes": [],
+        "node_ready": {},
+        "synthesis": ""
+    }
+
+    # Invoke the research agent with the initial state
+    answer = research_agent.invoke(initial_state)
+
+    # Extract links from the answer
+    links = {}
+    if answer and "root_sources" in answer:
+        for source in answer["root_sources"]:
+            url = source.get("url")
+            title = source.get("title", "Untitled")
+            if url:
+                links[title] = url
+
+    return links
 if __name__ == "__main__":
 
-    question = "your question"
+    question = "Report: wich haplotypes are more frequent in the pirynees from palelithic to iron age? whith what ethnics are related?"
 
     initial_state = {
         "query": question ,
