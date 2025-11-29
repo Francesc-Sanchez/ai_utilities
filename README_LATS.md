@@ -135,3 +135,28 @@ Extensions & next steps
 If you want, I will:
 - Add the smoke-test script now and wire it into `scripts/smoke_lats.py`.
 - Add a `requirements-lite.txt` with the minimal packages needed to run the module (I can produce a best-effort list based on imports).
+
+Recent Updates and Known Issues
+--------------------------------
+### Fixed Issues
+- **State Normalization Error**: Fixed `TypeError: vars() argument must have __dict__ attribute` in `generate_initial_response` by improving state normalization to handle various input types (dicts, objects without `__dict__`, etc.).
+- **JSON Serialization**: Added validation for JSON serializability in the final response to prevent formatting errors.
+- **Error Handling**: Enhanced error handling in tool calls, metadata fetching, and default source fetching with better logging and fallbacks.
+
+### Known Issues
+- **Irrelevant Search Results**: The research retriever may return results unrelated to the query (e.g., searching for haplotypes in Pyrenees returns results about search engines). This suggests a bug in the `research_ret` module where the query is not being passed correctly or the search is being overridden.
+- **Tool Call Parsing**: The parser may fail to extract tool calls from LLM output, leading to default searches that may not yield relevant results.
+- **Retriever Import Failures**: If `src.langraph_models.research_ret` cannot be imported, the model falls back to limited functionality without provenance.
+- **Metadata Fetching**: URL metadata fetching may fail due to network issues, timeouts, or invalid URLs, affecting provenance enrichment.
+
+### Troubleshooting
+- Check `logs/lats_model.log` for detailed error messages and query handling.
+- Verify that the query is correctly passed to the retriever by inspecting agent_state in `call_research_tool`.
+- Test the retriever manually: `python -c "from src.langraph_models import research_ret; print(research_ret.get_tool_node({'query': 'test query'}, 'google', 'search_google_detailed'))"`
+- Ensure all dependencies are installed and the virtual environment is activated.
+
+### Future Improvements
+- Implement query validation and sanitization to prevent irrelevant searches.
+- Add retry mechanisms for failed tool calls and network requests.
+- Enhance provenance extraction to better handle different retriever response formats.
+- Add configuration options for search parameters (e.g., number of results, search engines to use).
